@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect
 from flask_sqlalchemy import SQLAlchemy
-import pyshorteners
+import random
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///links.db'
@@ -14,18 +14,34 @@ class Links(db.Model):
     def __repr__(self):
         return 'Links %r' % self.id
 
+def generate_local_link():
+    symbols = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    part_string = '/'
+    uniq = True
+
+    while uniq:
+        for i in range(3):
+            part_string += symbols[random.randint(0, len(symbols)-1)]
+        
+        local_link = "http://127.0.0.1:5000/shrt" + part_string
+        rows = len(Links.query.all())
+        for i in range(1, rows+1):
+            uniq = False
+            old_link = Links.query.get(i)
+            old_local_link = old_link.local_link
+            if old_local_link == local_link:
+                uniq = True
+                break
+
+    return local_link
+
 @app.route('/shortlinker', methods=["GET", "POST"])
 def create_short_link():
     if request.method == "POST":
+        real_link = request.form["real_link"]
+        local_link = generate_local_link()
         try:
-            real_link = request.form["real_link"]
-            local_link = pyshorteners.Shortener().tinyurl.short(real_link)
-            
             links = Links(real_link=real_link, local_link=local_link)
-        except:
-            return render_template('Error.html')
-            
-        try:
             db.session.add(links)
             db.session.commit()
             return render_template('GetLink.html', link=local_link)
@@ -33,6 +49,25 @@ def create_short_link():
             return render_template('Error.html')
     else:
         return render_template('PostLink.html')
+
+@app.route('/shrt/<string:short_link>')
+def redirection(short_link):
+    new_local_link = "http://127.0.0.1:5000/shrt/" + short_link
+    is_correct = False
+    rows = len(Links.query.all())
+    for i in range(1, rows+1):
+        link = Links.query.get(i)
+        local_link = link.local_link
+
+        if new_local_link == local_link:
+            is_correct = True
+            real_link = link.real_link
+            break
+
+    if is_correct:
+        return redirect(real_link)
+    else:
+        return render_template('Error.html')
 
 if __name__ == "__main__":
     app.run(debug = True)
