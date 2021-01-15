@@ -23,7 +23,7 @@ def generate_local_link():
         for i in range(3):
             part_string += symbols[random.randint(0, len(symbols)-1)]
         
-        local_link = "http://127.0.0.1:5000/shrt" + part_string
+        local_link = "http://127.0.0.1:5000" + part_string
         rows = len(Links.query.all())
         for i in range(1, rows+1):
             uniq = False
@@ -50,9 +50,9 @@ def create_short_link():
     else:
         return render_template('PostLink.html')
 
-@app.route('/shrt/<string:short_link>')
+@app.route('/<string:short_link>')
 def redirection(short_link):
-    new_local_link = "http://127.0.0.1:5000/shrt/" + short_link
+    new_local_link = "http://127.0.0.1:5000/" + short_link
     is_correct = False
     rows = len(Links.query.all())
     for i in range(1, rows+1):
@@ -67,7 +67,7 @@ def redirection(short_link):
     if is_correct:
         return redirect(real_link)
     else:
-        return render_template('Error.html')
+        return render_template('Error404.html')
 
 if __name__ == "__main__":
     app.run(debug = True)
