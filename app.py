@@ -11,54 +11,58 @@ class Links(db.Model):
     real_link = db.Column(db.String(100), nullable=True)
     local_link = db.Column(db.String(100), nullable=True)
 
-    def __repr__(self):
-        return 'Links %r' % self.id
-
 def generate_local_link():
     symbols = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     part_string = '/'
     uniq = True
 
-    while uniq:
-        for i in range(3):
-            part_string += symbols[random.randint(0, len(symbols)-1)]
-        
-        local_link = "http://127.0.0.1:5000" + part_string
-        rows = len(Links.query.all())
-        for i in range(1, rows+1):
-            uniq = False
-            old_link = Links.query.get(i)
-            old_local_link = old_link.local_link
-            if old_local_link == local_link:
-                uniq = True
-                break
-
+    try:
+        while uniq:
+            for i in range(3):
+                part_string += symbols[random.randint(0, len(symbols)-1)]
+            
+            local_link = "https://appslr.herokuapp.com" + part_string
+            rows = len(Links.query.all())
+            for i in range(1, rows+1):
+                uniq = False
+                old_link = Links.query.get(i)
+                old_local_link = old_link.local_link
+                if old_local_link == local_link:
+                    uniq = True
+                    break
+    except:
+        local_link = 0
+    
     return local_link
 
 @app.route('/shortlinker', methods=["GET", "POST"])
 def create_short_link():
     if request.method == "POST":
         real_link = request.form["real_link"]
+        if real_link[:8] != 'https://':
+            real_link = 'https://' + real_link
         local_link = generate_local_link()
-        try:
-            links = Links(real_link=real_link, local_link=local_link)
-            db.session.add(links)
-            db.session.commit()
-            return render_template('GetLink.html', link=local_link)
-        except:
+        if local_link != 0:
+            try:
+                links = Links(real_link=real_link, local_link=local_link)
+                db.session.add(links)
+                db.session.commit()
+                return render_template('GetLink.html', link=local_link)
+            except:
+                return render_template('Error.html')
+        else:
             return render_template('Error.html')
     else:
         return render_template('PostLink.html')
 
 @app.route('/<string:short_link>')
 def redirection(short_link):
-    new_local_link = "http://127.0.0.1:5000/" + short_link
+    new_local_link = "https://appslr.herokuapp.com/" + short_link
     is_correct = False
     rows = len(Links.query.all())
     for i in range(1, rows+1):
         link = Links.query.get(i)
         local_link = link.local_link
-
         if new_local_link == local_link:
             is_correct = True
             real_link = link.real_link
